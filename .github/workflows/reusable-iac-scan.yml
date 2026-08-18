@@ -1,0 +1,42 @@
+# Reusable IaC scan: Trivy misconfiguration scan (Kubernetes/Terraform/Dockerfile) with SARIF upload,
+# plus kubeconform validation of Kubernetes manifests (kustomize dirs or plain YAML).
+name: reusable-iac-scan
+on:
+  workflow_call:
+    inputs:
+      path: {required: false, type: string, default: "."}
+      kubeconform-paths:
+        description: "Space-separated dirs/files with Kubernetes manifests (kustomize dirs are built first); empty = skip"
+        required: false
+        type: string
+        default: ""
+      trivy-severity: {required: false, type: string, default: "HIGH,CRITICAL"}
+permissions: {}
+jobs:
+  iac:
+    runs-on: ubuntu-latest
+    permissions: {contents: read, security-events: write}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Trivy config scan (SARIF)
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+        with:
+          scan-type: config
+          scan-ref: ${{ inputs.path }}
+          format: sarif
+          output: trivy-config.sarif
+          severity: ${{ inputs.trivy-severity }}
+          exit-code: "1"
+        continue-on-error: true
+      - uses: github/codeql-action/upload-sarif@988661ebb5e81487b3fb31b2185d2856c0a10679 # v4
+        if: always()
+        with: {sarif_file: trivy-config.sarif}
+        continue-on-error: true
+      - name: kubeconform
+        if: ${{ inputs.kubeconform-paths != '' }}
+        run: |
+          curl -fsSL https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz | tar xz
+          sudo mv kubeconform /usr/local/bin/
+          for p in ${{ inputs.kubeconform-paths }}; do
+            if [ -f "$p/kustomization.yaml" ]; then kubectl kustomize "$p" | kubeconform -strict -ignore-missing-schemas -summary; else kubeconform -strict -ignore-missing-schemas -summary "$p"; fi
+          done

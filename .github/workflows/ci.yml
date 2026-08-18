@@ -1,0 +1,43 @@
+# The repository proves its own pipeline: the example app goes through the reusable workflows on every push.
+name: ci
+on:
+  push: {branches: [main], tags: ["v*"]}
+  pull_request:
+permissions: {}
+jobs:
+  quality:
+    uses: ./.github/workflows/reusable-python-quality.yml
+    permissions: {contents: read}
+    with:
+      working-directory: example/hello-supply-chain
+  iac:
+    uses: ./.github/workflows/reusable-iac-scan.yml
+    permissions: {contents: read, security-events: write}
+    with:
+      path: example/hello-supply-chain
+  container:
+    needs: [quality]
+    uses: ./.github/workflows/reusable-container.yml
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+      security-events: write
+    with:
+      image_name: homelab-supply-chain-hello
+      context: example/hello-supply-chain
+      dockerfile: example/hello-supply-chain/Dockerfile
+      push: ${{ github.event_name != 'pull_request' }}
+      fail_on_severity: critical
+  lint-workflows:
+    runs-on: ubuntu-latest
+    permissions: {contents: read}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: actionlint
+        run: |
+          curl -fsSL https://github.com/rhysd/actionlint/releases/download/v1.7.7/actionlint_1.7.7_linux_amd64.tar.gz | tar xz
+          ./actionlint -color
+      - name: shellcheck scripts
+        run: sudo apt-get install -y shellcheck >/dev/null && shellcheck scripts/*.sh
