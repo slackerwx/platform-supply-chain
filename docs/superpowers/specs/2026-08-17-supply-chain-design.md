@@ -1,4 +1,4 @@
-# homelab-supply-chain — Design
+# platform-supply-chain — Design
 
 **Date**: 2026-08-17 · **Status**: Specified — implementation pending (reusable workflows already written, everything
 else pending) · **Approach**: reusable GitHub Actions workflows that build, describe (SBOM), scan, **sign** and
@@ -8,12 +8,12 @@ Kyverno.
 ## 1. Context
 Every homelab image is built by GitHub Actions and pushed to **private GHCR packages**
 (`ghcr.io/slackerwx/<name>:<sha7>`, pulled with `imagePullSecrets: [ghcr-secret]`). Today each repo re-implements its own
-build job (see `homelab-finops/.github/workflows/ci.yml`): no SBOM, no vulnerability gate, no signature, no provenance.
-Meanwhile `homelab-policies` ships the Kyverno rule `verify-images-slackerwx`, which requires that images from
+build job (see `platform-finops/.github/workflows/ci.yml`): no SBOM, no vulnerability gate, no signature, no provenance.
+Meanwhile `platform-policies` ships the Kyverno rule `verify-images-slackerwx`, which requires that images from
 `ghcr.io/slackerwx/*` carry a **cosign keyless signature issued to a GitHub Actions workflow of a `slackerwx` repo on
 `main`**. That rule is in Audit today and cannot move to Enforce until a pipeline produces those signatures — this repo
 is that pipeline, and therefore a hard dependency of every other pillar that builds an image
-(`homelab-finops`, `homelab-sre-agent`, and anything created by the Backstage golden paths).
+(`platform-finops`, `platform-sre-agent`, and anything created by the Backstage golden paths).
 
 This is also the pillar that maps most directly to what regulated companies ask for: SBOM inventory, vulnerability
 gates, artifact signing and SLSA provenance as auditable evidence.
@@ -36,7 +36,7 @@ flowchart LR
   subgraph Consumer repo (finops, sre-agent, golden paths...)
     CI[ci.yml] -->|uses: .../reusable-container.yml@v1| RC
   end
-  subgraph homelab-supply-chain
+  subgraph platform-supply-chain
     RC[reusable-container.yml] --> B[buildx build+push]
     B --> S[Syft → SBOM SPDX]
     S --> G[Grype → SARIF + gate]
@@ -115,10 +115,10 @@ Outputs: `image` (`ghcr.io/owner/name@sha256:…`), `digest`, `tags`. Required c
 `reusable-iac-scan.yml` — inputs `path` (`.`), `kubeconform-paths` (space-separated dirs; kustomize dirs are built
 first), `trivy-severity` (`HIGH,CRITICAL`).
 
-**Contract with `homelab-policies`** (must not drift): issuer `https://token.actions.githubusercontent.com`, subject
+**Contract with `platform-policies`** (must not drift): issuer `https://token.actions.githubusercontent.com`, subject
 regex `^https://github\.com/slackerwx/[^/]+/\.github/workflows/[^@]+@refs/heads/main$`, `mutateDigest: true`. Because
 the identity is the *called* workflow file, consumers get identity
-`https://github.com/slackerwx/homelab-supply-chain/.github/workflows/reusable-container.yml@refs/heads/main` — the regex
+`https://github.com/slackerwx/platform-supply-chain/.github/workflows/reusable-container.yml@refs/heads/main` — the regex
 covers it, and the verify job asserts the same thing from the outside.
 
 ### Repository layout to build
@@ -151,7 +151,7 @@ login even for `cosign verify`, which is why the verify job logs in — and why 
 
 Nothing here runs in-cluster, so no NetworkPolicy/PSS applies; the *output* must satisfy the enforced policies:
 fully-qualified pinned base images, non-root containers, and — recursively — signatures for the images this repo itself
-publishes (`homelab-supply-chain-hello`).
+publishes (`platform-supply-chain-hello`).
 
 ## 7. Testing and validation
 Offline (on the Mac): `actionlint` over `.github/workflows`, `shellcheck scripts/*.sh`, `python3 -c "import yaml,glob;[list(yaml.safe_load_all(open(f))) for f in glob.glob('.github/workflows/*.yml')]"`,
@@ -164,21 +164,21 @@ In CI (this repo's `ci.yml`): `quality` (uv/ruff/mypy/pytest on the example), `i
 provenance is missing or issued to an unexpected identity.
 
 Cannot be validated here: Kyverno actually admitting/denying based on these signatures (needs the cluster — the
-`homelab-policies` kind e2e covers the policy logic, not the real signatures).
+`platform-policies` kind e2e covers the policy logic, not the real signatures).
 
 ## 8. Owner checklist
 1. Nothing to seal — this pillar uses only `GITHUB_TOKEN` and OIDC.
 2. After the first green run on `main`, verify by hand from your Mac:
-   `GHCR_TOKEN=<PAT read:packages> ./scripts/verify-image.sh ghcr.io/slackerwx/homelab-supply-chain-hello:<sha7>`
+   `GHCR_TOKEN=<PAT read:packages> ./scripts/verify-image.sh ghcr.io/slackerwx/platform-supply-chain-hello:<sha7>`
 3. Cut the consumable tag: `git tag -a v1 -m "reusable supply-chain workflows v1" && git push origin v1`
    (re-point `v1` with `git tag -f v1 && git push -f origin v1` when the workflows change; consumers pin `@v1`).
-4. Migrate `homelab-finops` to the reusable workflow (replace its build job with a `uses:` call) and re-tag its image so
+4. Migrate `platform-finops` to the reusable workflow (replace its build job with a `uses:` call) and re-tag its image so
    the running deployment is a signed one.
-5. Only then flip `verify-images-slackerwx` to Enforce in `homelab-policies` (its `overlays/enforce` already does that —
+5. Only then flip `verify-images-slackerwx` to Enforce in `platform-policies` (its `overlays/enforce` already does that —
    so do steps 3–4 **before** switching that Application's path).
 
 ## 9. Implementation notes for the executing agent
-Work in `/Users/slackerwx/Developer/slackerwx/homelab-supply-chain` (already `git init`-ed, workflows present,
+Work in `/Users/slackerwx/Developer/slackerwx/platform-supply-chain` (already `git init`-ed, workflows present,
 **no commits yet**). Do not modify the existing workflow files except where a task says so.
 
 1. **Example app** — create `example/hello-supply-chain/{pyproject.toml,src/hello/__init__.py,src/hello/app.py,tests/test_app.py,Dockerfile,README.md}`. `pyproject.toml`: name `hello-supply-chain`, `requires-python = ">=3.12,<3.13"`, no runtime deps, dev extra `pytest==9.1.1 pytest-cov==7.1.0 ruff==0.16.3 mypy==2.3.1`, hatchling build with `packages = ["src/hello"]`, ruff `line-length = 100`, mypy `strict`. `app.py`: `http.server` handler answering `/healthz` → `{"status":"ok"}` and `/` → `{"app":"hello-supply-chain","version":__version__}`, `serve(port: int = 8080)`. Test: start the server on an ephemeral port in a thread, assert both routes. Validate: `cd example/hello-supply-chain && uv sync --extra dev && uv run ruff check . && uv run mypy && uv run pytest -q`.
@@ -189,15 +189,15 @@ Work in `/Users/slackerwx/Developer/slackerwx/homelab-supply-chain` (already `gi
    ```yaml
    jobs:
      container:
-       uses: slackerwx/homelab-supply-chain/.github/workflows/reusable-container.yml@v1
+       uses: slackerwx/platform-supply-chain/.github/workflows/reusable-container.yml@v1
        permissions: {contents: read, packages: write, id-token: write, attestations: write, security-events: write}
        with:
          image_name: my-service
          push: ${{ github.event_name != 'pull_request' }}
    ```
 5. **Validate everything offline** — `actionlint` (download the v1.7.7 binary), `shellcheck scripts/*.sh`, YAML parse of every workflow. Expected: clean.
-6. **Commit and publish** — Conventional Commits with the `Claude-Session:` trailer, then `gh repo create slackerwx/homelab-supply-chain --private --description "Secure software supply chain for the homelab: reusable SBOM/scan/sign/attest workflows" --source . --remote origin --push`.
-7. **Make CI green** — `gh run watch <id> --exit-status`; expect `container` to push `ghcr.io/slackerwx/homelab-supply-chain-hello:<sha7>` and the `verify` job to pass. Common failures: SARIF upload rejected on a private repo (already `continue-on-error`), `attestations: write` missing in a caller, Grype gate tripping on the base image (bump `python:3.12.x-slim`).
+6. **Commit and publish** — Conventional Commits with the `Claude-Session:` trailer, then `gh repo create slackerwx/platform-supply-chain --private --description "Secure software supply chain for the homelab: reusable SBOM/scan/sign/attest workflows" --source . --remote origin --push`.
+7. **Make CI green** — `gh run watch <id> --exit-status`; expect `container` to push `ghcr.io/slackerwx/platform-supply-chain-hello:<sha7>` and the `verify` job to pass. Common failures: SARIF upload rejected on a private repo (already `continue-on-error`), `attestations: write` missing in a caller, Grype gate tripping on the base image (bump `python:3.12.x-slim`).
 8. **Tag `v1`** and record the exact digest of the first signed image in the README "proof" section.
 
 ## 10. Learning material (pt-BR, `docs/LEARNING.md`)

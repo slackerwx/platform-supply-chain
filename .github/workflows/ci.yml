@@ -25,7 +25,7 @@ jobs:
       attestations: write
       security-events: write
     with:
-      image_name: homelab-supply-chain-hello
+      image_name: platform-supply-chain-hello
       context: example/hello-supply-chain
       dockerfile: example/hello-supply-chain/Dockerfile
       push: ${{ github.event_name != 'pull_request' }}

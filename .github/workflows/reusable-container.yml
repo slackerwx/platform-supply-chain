@@ -1,13 +1,13 @@
 # Reusable secure container build: build → push (GHCR) → SBOM (Syft, attached as attestation) → vulnerability scan
 # (Grype, SARIF + gate) → cosign keyless signature → SLSA build provenance (GitHub artifact attestations) → verify.
 # Call it from any repo:
-#   uses: slackerwx/homelab-supply-chain/.github/workflows/reusable-container.yml@v1
+#   uses: slackerwx/platform-supply-chain/.github/workflows/reusable-container.yml@v1
 name: reusable-container
 on:
   workflow_call:
     inputs:
       image_name:
-        description: "Image name without registry, e.g. homelab-finops (pushed to ghcr.io/<owner>/<image_name>)"
+        description: "Image name without registry, e.g. platform-finops (pushed to ghcr.io/<owner>/<image_name>)"
         required: true
         type: string
       context:
