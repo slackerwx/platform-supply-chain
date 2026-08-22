@@ -52,6 +52,13 @@ Verifique um consumidor logo depois — `gh workflow run ci.yml --repo slackerwx
 quebrado quebra **todos** os repositórios de uma vez. Essa é a desvantagem aceita da tag móvel; quem quiser o
 contrário fixa um SHA de commit.
 
+> ⚠️ **Imagem construída a partir da tag não é admissível no cluster.** Empurrar `v1` dispara o `ci.yml`
+> (`on.push.tags: ["v*"]`), que publica e assina com identidade `…@refs/tags/v1`. O job `verify` aceita — o regexp
+> dele cobre `refs/heads/main` **e** `refs/tags/v*`. O Kyverno **não**: o `verify-images-slackerwx` exige
+> `@refs/heads/main$`. É de propósito, para que só o que passou pela `main` chegue no cluster; a assimetria só
+> importa se alguém tentar fazer deploy de uma imagem `:1` ou `:1.0.0` em vez da `:<sha7>`. Sintoma nesse caso:
+> `image is not signed` no admission, com a assinatura existindo no registry.
+
 ## Falhas comuns
 
 ### `Error: no matching signatures`
