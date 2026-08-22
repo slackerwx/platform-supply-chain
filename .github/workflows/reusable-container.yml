@@ -111,19 +111,26 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Digest reference
+      - name: Reference to describe, scan and sign
         id: ref
+        env:
+          # Interpolating tags straight into the script would let a fork's branch name inject shell.
+          PUSH: ${{ inputs.push }}
+          DIGEST: ${{ steps.build.outputs.digest }}
+          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
-          if [ "${{ inputs.push }}" = "true" ]; then
-            echo "image=${IMAGE}@${{ steps.build.outputs.digest }}" >> "$GITHUB_OUTPUT"
+          if [ "$PUSH" = "true" ]; then
+            # By digest: a signature must bind to the immutable manifest, never to a movable tag.
+            echo "image=${IMAGE}@${DIGEST}" >> "$GITHUB_OUTPUT"
           else
-            echo "image=${IMAGE}:local" >> "$GITHUB_OUTPUT"
+            # `load: true` puts the metadata-action tags in the local daemon — the first one is what exists.
+            echo "image=$(printf '%s\n' "$TAGS" | head -n1)" >> "$GITHUB_OUTPUT"
           fi
 
       - name: SBOM (Syft → SPDX JSON)
         uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
         with:
-          image: ${{ inputs.push && steps.ref.outputs.image || format('{0}:local', env.IMAGE) }}
+          image: ${{ steps.ref.outputs.image }}
           format: spdx-json
           output-file: sbom.spdx.json
           upload-artifact: false
