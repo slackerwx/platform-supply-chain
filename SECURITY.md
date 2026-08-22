@@ -40,6 +40,10 @@ Grype gate is a separate, deliberately configurable control — see `docs/slsa.m
 
 - **No secret material exists in this repository.** Signing uses OIDC and short-lived Fulcio certificates; the only
   credential in play is the per-job `GITHUB_TOKEN`. There is no key to rotate and none to leak.
+- **This repository is public; the images it builds are not.** Publishing the source is deliberate: SLSA build
+  attestations are unavailable to user-owned private repositories, and more importantly an outsider cannot audit a
+  pipeline they cannot read. The GHCR packages stay private — repository visibility and package visibility are
+  separate settings.
 - **Every workflow starts from `permissions: {}`**, so each job has to opt in to what it needs. The `verify` job
   runs as a *separate* job with its own narrow permissions (`packages: read`, `attestations: read`) — verification
   must not be influenceable by the step that produced the thing being verified.

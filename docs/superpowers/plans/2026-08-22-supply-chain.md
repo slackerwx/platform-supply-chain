@@ -37,6 +37,14 @@ pipeline, the human verification script, the documentation, and the `v1` tag con
    distroless base (hides the CVEs by changing distro, and musl breaks manylinux wheels for real consumers) and
    `fail_on_severity: high`-style loosening (wrong axis — severity is not actionability).
 
+7. **The repository is public** (owner decision, 2026-08-22). The first signed run failed with
+   `Failed to persist attestation: Feature not available for user-owned private repositories`. Options put to the
+   owner were: publish the repository, hand-roll a SLSA predicate with `cosign attest --type slsaprovenance`, or
+   ship signature + SBOM without provenance. The owner chose to publish. Sanitisation check ran clean before the
+   switch: no RFC1918 address, no `.k8s` hostname, no bucket name, no `svc.cluster.local` in tracked content.
+   Follow-on edits: `scorecard.yml` now publishes results, and the SARIF and provenance comments were rewritten to
+   describe the *consumer's* private-repo case rather than this one's.
+
 ## Tasks
 
 - [x] 1. Example app — `pyproject.toml`, `src/hello/{__init__,app}.py`, `tests/test_app.py`, `README.md`

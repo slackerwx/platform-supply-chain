@@ -90,8 +90,16 @@ grype sbom:sbom.spdx.json -o table --only-fixed # o que o gate enxerga
 
 ### O upload do SARIF falha
 
-`Advanced Security must be enabled for this repository` — repositório privado sem GHAS. O step já é
+`Advanced Security must be enabled for this repository` — acontece em repositório **privado** sem GHAS, ou seja,
+nos consumidores, não aqui (este repo é público e tem code scanning de graça). O step já é
 `continue-on-error: true`; o build não quebra e o gate continua funcionando. É esperado, não é incidente.
+
+### `Failed to persist attestation: Feature not available for user-owned private repositories`
+
+O `actions/attest-build-provenance` não funciona em repo privado de conta pessoal — só em repo público ou em plano
+Team/Enterprise. Foi por isso que este repositório é público. Um consumidor privado que chame o reusable workflow
+vai bater nisso: as saídas são tornar aquele repo público, migrar para uma org com plano Team, ou aceitar assinatura
++ SBOM sem provenance.
 
 ### O job `verify` falha mas o `build` passou
 

@@ -167,7 +167,9 @@ jobs:
         uses: github/codeql-action/upload-sarif@988661ebb5e81487b3fb31b2185d2856c0a10679 # v4
         with:
           sarif_file: grype.sarif
-        continue-on-error: true      # code scanning may be unavailable on private repos without GHAS
+        # Public repos get code scanning for free; a private caller without GHAS has the upload rejected, and
+        # that must not fail its build — the gate below is what enforces, not the upload.
+        continue-on-error: true
 
       # Gating and reporting are different jobs. The gate above blocks on what the build can actually act on;
       # this one hides nothing, so an un-fixable CVE stays visible instead of being quietly filtered away.

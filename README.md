@@ -9,6 +9,10 @@ for: `platform-policies` ships a Kyverno rule that only admits `ghcr.io/slackerw
 signature from a `slackerwx` workflow on `main`. Until this repository produces those signatures, that rule cannot
 leave Audit mode.
 
+It is also the one public repository among the pillars — partly because GitHub only issues build attestations to
+public (or Team/Enterprise) repositories, and mostly because a supply-chain pipeline you cannot read is one you
+cannot audit.
+
 ## Architecture
 
 ```mermaid
@@ -150,6 +154,11 @@ that tells other people to verify their artifacts does not get to trust a floati
 
 Steps that need the owner (or the cluster) rather than CI:
 
+0. **This repository is public**, unlike the other pillars. `actions/attest-build-provenance` refuses to persist an
+   attestation for a user-owned *private* repository, and a pipeline nobody can read is a pipeline nobody can audit.
+   The GHCR packages remain private; repository visibility and package visibility are independent. If you want an
+   outsider to be able to run `scripts/verify-image.sh` end to end, make the `platform-supply-chain-hello` package
+   public too — it is a throwaway example image.
 1. Nothing to seal — this pillar uses only `GITHUB_TOKEN` and OIDC. No secret exists to leak.
 2. After the first green run on `main`, verify by hand from your Mac:
    `GHCR_TOKEN=<PAT read:packages> ./scripts/verify-image.sh ghcr.io/slackerwx/platform-supply-chain-hello:<sha7>`
