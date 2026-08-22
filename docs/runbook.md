@@ -68,13 +68,25 @@ Pacote GHCR privado sem credencial. Exporte `GHCR_TOKEN` (PAT com `read:packages
 
 ### O job `container` falha em "Fail on vulnerabilities above the gate"
 
-O Grype achou CVE na severidade do gate ou acima. Triagem:
+O Grype achou CVE **com correção disponível** na severidade do gate ou acima (`only_fixed: true` é o padrão).
+Triagem:
 
-1. Abra o SARIF na aba **Security → Code scanning** do repositório e identifique o pacote.
+1. Abra o **job summary** da execução: o relatório completo (todas as severidades, com e sem correção) está lá, e
+   também no artefato `vulnerabilities-<image_name>`. Se o repo tiver GHAS, o SARIF está em **Security → Code
+   scanning**.
 2. Se veio do seu código: suba a dependência e refaça o `uv lock`.
 3. Se veio da imagem base: suba o patch (`python:3.12.x-slim` mais nova) no `Dockerfile`.
-4. Se não há correção disponível e a CVE não é explorável no seu contexto: **não** afrouxe o gate global. Documente
-   a decisão no PR e, quando VEX sair do backlog, suprima especificamente.
+4. Se não há correção disponível, o gate padrão **não** deveria ter barrado — confira se alguém passou
+   `only_fixed: false`. Não afrouxe `fail_on_severity` como atalho: documente no PR e, quando VEX sair do backlog,
+   suprima a CVE específica.
+
+Para reproduzir a triagem na sua máquina, sem Docker, a partir do SBOM que o próprio run publicou:
+
+```bash
+gh run download <id> --repo slackerwx/<repo> -n sbom-<image_name>
+grype sbom:sbom.spdx.json -o table              # tudo
+grype sbom:sbom.spdx.json -o table --only-fixed # o que o gate enxerga
+```
 
 ### O upload do SARIF falha
 

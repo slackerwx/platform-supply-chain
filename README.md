@@ -61,6 +61,7 @@ signature must only ever be produced from `main`; that is precisely what the Kyv
 | `platforms` | string | `linux/amd64` | buildx platforms |
 | `push` | boolean | `true` | publish + sign + attest |
 | `fail_on_severity` | string | `critical` | Grype gate: `negligible`\|`low`\|`medium`\|`high`\|`critical` |
+| `only_fixed` | boolean | `true` | gate only on vulnerabilities that have a fix available |
 
 Outputs: `image` (`ghcr.io/owner/name@sha256:…`), `digest`, `tags`.
 Required caller permissions: `contents: read`, `packages: write`, `id-token: write`, `attestations: write`,
@@ -126,8 +127,21 @@ exactly what we do and do not meet, and what the upgrade would take.
 **Scan the SBOM, not the image again.** Grype reads the SPDX document Syft already produced: faster, and the
 inventory that gets scanned is provably the same one that gets attested.
 
-**Gate on `critical` by default.** A new HIGH CVE in a base image should not block unrelated work; the SARIF still
-lands in the Security tab so nothing is hidden. Consumers that want stricter behaviour pass `fail_on_severity: high`.
+**Gate on `critical`, and only on what is fixable.** A new HIGH CVE in a base image should not block unrelated
+work, so the default cutoff is `critical`. `only_fixed: true` is the less obvious half: `python:3.12.14-slim`
+currently ships seven CRITICAL CVEs in `perl-base` and `libc6` that Debian has marked *wont-fix*. There is no newer
+patch release to move to — a gate that blocks on them blocks every build in the lab forever, which does not make
+anything safer, it just teaches everyone to ignore red.
+
+Gating and reporting are therefore separate steps. The gate blocks on vulnerabilities the build can act on; a
+second, non-blocking Grype run publishes **every** finding to the job summary and uploads it as an artifact, so
+nothing is filtered out of sight. And the SBOM is signed and attached to the image, so anyone can re-scan it later
+under a stricter policy without rebuilding. Consumers that want a harder gate pass `fail_on_severity: high` or
+`only_fixed: false`; VEX (`openvex`, backlog) is the way to suppress specific un-exploitable CVEs instead.
+
+Alternatives considered and rejected: switching the base image to Alpine or distroless would make those seven CVEs
+disappear, but "change distro until the scanner goes quiet" is a worse habit than "gate on what is actionable", and
+musl breaks the manylinux wheels the real consumers of this Dockerfile need.
 
 **Every action is pinned by commit SHA**, with the version in a trailing comment. Tags are mutable — a repository
 that tells other people to verify their artifacts does not get to trust a floating tag.

@@ -105,6 +105,7 @@ because that is exactly what the Kyverno subject regex trusts.
 | `platforms` | string | `linux/amd64` | buildx platforms |
 | `push` | boolean | `true` | publish + sign + attest |
 | `fail_on_severity` | string | `critical` | Grype gate: negligible/low/medium/high/critical |
+| `only_fixed` | boolean | `true` | gate only on findings that have a fix (added 2026-08-22, see the addendum) |
 
 Outputs: `image` (`ghcr.io/owner/name@sha256:…`), `digest`, `tags`. Required caller permissions: `contents: read`,
 `packages: write`, `id-token: write`, `attestations: write`, `security-events: write`.
@@ -212,3 +213,25 @@ job `verify` quebrar; (5) trocar `fail_on_severity` para `high` e medir quanto r
 SLSA L3 via `slsa-github-generator`; VEX (`openvex`) para suprimir CVEs não exploráveis; assinatura de charts/manifests
 OCI; `cosign policy` como gate no CD além do admission; mirror local de imagens públicas (Harbor/zot) para não depender
 de rate limits; Renovate no lugar do Dependabot para agrupar bumps de SHA.
+
+## 12. Addendum — 2026-08-22 (implementation)
+
+Written after implementing §9/§10; the sections above are the design as of 2026-08-17 and are left intact.
+
+- **`only_fixed` input added, default `true`.** The first CI run failed the gate on seven CRITICAL CVEs from the
+  base image — five in `perl-base`, one (twice) in `libc-bin`/`libc6` — all marked *wont-fix* by Debian.
+  `python:3.12.14-slim` is already the newest 3.12.x, so the remedy suggested in §9.7 ("bump `python:3.12.x-slim`")
+  does not exist. Gating and reporting were split: the gate now blocks on what a build can act on, and a second
+  non-blocking Grype run publishes every finding to the job summary and uploads it as `vulnerabilities-<name>`.
+  Nothing is hidden — the attested SBOM also lets anyone re-scan under a stricter policy later.
+- **`reusable-container.yml` pull-request path fixed.** The reference step exported `<IMAGE>:local` when
+  `push: false`, but `load: true` loads the `metadata-action` tags, so Syft failed on every pull request. It now
+  takes the first tag from `steps.meta.outputs.tags`, and reads tags through the environment rather than direct
+  interpolation.
+- **`ruff` pinned to `0.16.4`** (0.16.3 in the §4 table was stale by 2026-08-22). `mypy 2.3.1`, `pytest 9.1.1`,
+  `pytest-cov 7.1.0` and `hatchling 1.32.0` re-verified unchanged.
+- **`uv sync --no-editable` in the example Dockerfile.** The final stage copies only `/app/.venv`; an editable
+  install would resolve to a `/app/src` that does not exist there.
+
+The full task list and the reasoning behind each deviation are in
+`docs/superpowers/plans/2026-08-22-supply-chain.md`.

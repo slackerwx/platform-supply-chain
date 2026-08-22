@@ -28,6 +28,15 @@ pipeline, the human verification script, the documentation, and the `v1` tag con
    commands omit all three. `pyproject.toml` therefore sets `[tool.mypy] packages/mypy_path` (finops style) and
    `[tool.coverage.run] source`.
 
+6. **New input `only_fixed` (default `true`) on `reusable-container.yml`**, decided after the first CI run went red.
+   `python:3.12.14-slim` carries seven CRITICAL CVEs (`perl-base` ×5, `libc-bin`/`libc6` ×1) that Debian marked
+   *wont-fix*; 3.12.14 is already the newest 3.12.x, so the spec's suggested remedy in §9.7 ("bump
+   `python:3.12.x-slim`") does not exist. A gate on unfixable findings would block every build in the lab forever.
+   Gating and reporting were split: the gate blocks on actionable findings, a second non-blocking Grype run
+   publishes every finding to the job summary and uploads it as `vulnerabilities-<image_name>`. Rejected: Alpine or
+   distroless base (hides the CVEs by changing distro, and musl breaks manylinux wheels for real consumers) and
+   `fail_on_severity: high`-style loosening (wrong axis — severity is not actionability).
+
 ## Tasks
 
 - [x] 1. Example app — `pyproject.toml`, `src/hello/{__init__,app}.py`, `tests/test_app.py`, `README.md`

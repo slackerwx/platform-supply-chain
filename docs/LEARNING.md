@@ -17,6 +17,9 @@ Uma assinatura sem SBOM diz que alguém confiável entregou uma caixa fechada. U
 texto que qualquer um reescreve. A provenance é o que liga a caixa ao commit que a gerou. Se faltar qualquer um dos
 três, o job `verify` derruba o build.
 
+O scan de vulnerabilidade é uma **quarta** pergunta ("tem problema conhecido no que tem dentro?") e por isso é uma
+decisão de política à parte — veja o exercício 5.
+
 ## 2. Por que keyless (Fulcio + Rekor)
 
 Assinatura tradicional exige uma chave privada. Alguém guarda, alguém rotaciona, e no dia que vaza a chave assina
@@ -108,7 +111,8 @@ dependencies = ["pyyaml==5.3.1"]   # CVE-2020-14343, execução arbitrária de c
 Rode `uv lock`, faça commit numa branch e abra um PR.
 
 **Sintoma esperado:** o job `container` falha no step *"Fail on vulnerabilities above the gate"*. Com o gate padrão
-em `critical`, uma CVE de severidade CRITICAL derruba o build; o SARIF sobe para a aba Security mesmo assim.
+em `critical`, uma CVE CRITICAL **com correção disponível** (a CVE-2020-14343 é corrigida no PyYAML 5.4) derruba o
+build. O relatório completo fica no job summary da execução e no artefato `vulnerabilities-*`.
 
 **O que isso ensina:** o SBOM não é enfeite — o Grype escaneia **o SBOM**, não a imagem de novo. O inventário que
 foi escaneado é comprovadamente o mesmo que foi atestado.
@@ -153,18 +157,23 @@ cosign clean --type attestation "$IMG"
 
 **Consertar:** rode o workflow de novo na `main`; ele reanexa a attestation ao mesmo digest.
 
-## Exercício 5 — apertar o gate para `high` e medir o ruído
+## Exercício 5 — apertar o gate e medir o ruído
 
-Em `.github/workflows/ci.yml`, troque `fail_on_severity: critical` por `high`, abra um PR e observe.
+Em `.github/workflows/ci.yml`, no job `container`, acrescente `only_fixed: false` e observe o build.
 
-**Sintoma esperado:** o build passa a falhar por CVEs HIGH que vieram da imagem base `python:3.12.14-slim` e que
-não têm nada a ver com o seu código. Anote quantas.
+**Sintoma esperado:** o build **falha na hora**, com 7 CVEs CRITICAL vindas de `perl-base` e `libc6` da imagem base
+`python:3.12.14-slim`. Todas marcadas `wont-fix` pelo Debian: não existe versão corrigida para subir. Foi
+exatamente isso que aconteceu na primeira execução deste repositório, e foi o que motivou o `only_fixed: true`.
 
-**O que isso ensina:** o custo real de um gate rígido não é técnico, é organizacional — a equipe aprende a ignorar
-o vermelho. A pergunta certa não é "qual o gate mais seguro?", e sim "qual gate a equipe vai respeitar?". Com VEX
-(no backlog) daria para suprimir CVE não explorável e aí sim apertar.
+Agora troque para `fail_on_severity: high` mantendo `only_fixed: true` e compare. Anote quantas aparecem.
 
-**Consertar:** voltar para `critical`, ou subir a imagem base (`python:3.12.x-slim` mais nova) e medir de novo.
+**O que isso ensina:** existem dois eixos independentes — **severidade** (quão grave) e **acionabilidade** (existe
+correção?). Um gate que barra o que não tem conserto não deixa nada mais seguro; só ensina a equipe a ignorar o
+vermelho, ou pior, a desligar o scanner. E repare que o relatório completo continua no *job summary* e no artefato
+`vulnerabilities-*` mesmo com o gate filtrando: **filtrar o gate não é esconder o achado**.
+
+**Consertar:** remover o `only_fixed: false`. Para apertar de verdade sem ruído, o caminho é VEX (`openvex`, no
+backlog) — declarar CVE por CVE que não é explorável no seu contexto, em vez de afrouxar o gate inteiro.
 
 ## Exercício 6 — quebrar o contrato de identidade
 

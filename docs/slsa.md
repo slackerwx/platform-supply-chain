@@ -97,7 +97,10 @@ At no point does the auditor have to take our word for anything. That is the ent
 - **Rekor is public, the packages are private.** The transparency log entry reveals that
   `ghcr.io/slackerwx/<name>@sha256:…` was signed, and by which workflow. The image contents stay private; the
   *existence* and identity do not. Acceptable here, worth knowing before applying this pattern to a secret project.
-- **The gate is `critical` by default.** A HIGH CVE ships. The SARIF records it and `docs/runbook.md` covers
-  triage; the decision is deliberate, not an oversight.
+- **The gate is `critical` and `only_fixed` by default.** A HIGH CVE ships, and so does a CRITICAL one that
+  Debian has marked *wont-fix* — `python:3.12.14-slim` has seven of those today, in `perl-base` and `libc6`, with
+  no patched release to move to. Blocking on an unfixable finding stops every build without removing the
+  vulnerability. The full, unfiltered report is published to the job summary and uploaded as an artifact on every
+  run, and the attested SBOM lets anyone re-scan under a stricter policy later. `docs/runbook.md` covers triage.
 - **A signature is not a safety certificate.** It says who built the artifact, not that the artifact is good. Signed
   malware is still malware — the value is that it is *attributable* malware.
