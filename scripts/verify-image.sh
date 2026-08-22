@@ -37,9 +37,10 @@ for tool in cosign jq gh openssl; do
 done
 [ "$missing" -eq 0 ] || exit 69
 
+# Only cosign needs the registry credential here; `gh attestation verify` uses your existing `gh auth` session
+# and this script deliberately does not touch it.
 if [ -n "${GHCR_TOKEN:-}" ]; then
   echo "$GHCR_TOKEN" | cosign login ghcr.io --username "$GHCR_USER" --password-stdin >/dev/null
-  echo "$GHCR_TOKEN" | gh auth login --with-token 2>/dev/null || true
 fi
 
 failures=0
@@ -64,7 +65,9 @@ sbom_summary() {
   local line payload
   while IFS= read -r line; do
     [ -n "$line" ] || continue
-    payload="$(printf '%s' "$line" | jq -r '.payload // empty' | openssl base64 -d -A 2>/dev/null || true)"
+    # cosign v3 emits Sigstore bundles (DSSE under .dsseEnvelope); v2 emitted the bare envelope.
+    payload="$(printf '%s' "$line" | jq -r '.dsseEnvelope.payload // .payload // empty' \
+      | openssl base64 -d -A 2>/dev/null || true)"
     [ -n "$payload" ] || continue
     if printf '%s' "$payload" | jq -e '.predicateType | test("spdx"; "i")' >/dev/null 2>&1; then
       printf '%s' "$payload" | jq -r '

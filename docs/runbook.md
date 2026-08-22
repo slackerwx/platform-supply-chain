@@ -24,9 +24,12 @@ gh run watch <id> --repo slackerwx/platform-supply-chain --exit-status
 # Verificar uma imagem publicada (pacote privado → precisa de PAT com read:packages)
 GHCR_TOKEN=<PAT> ./scripts/verify-image.sh ghcr.io/slackerwx/platform-supply-chain-hello:<sha7>
 
-# Ver o SBOM inteiro
+# Ver o SBOM inteiro. O cosign v3 devolve Sigstore bundles: o DSSE fica em .dsseEnvelope, e vêm três
+# attestations (SPDX, cosign sign, SLSA provenance) — daí o select pelo predicateType.
 cosign download attestation ghcr.io/slackerwx/<img>@sha256:<digest> \
-  | jq -r '.payload' | openssl base64 -d -A | jq '.predicate.packages[] | .name + " " + .versionInfo'
+  | jq -r '.dsseEnvelope.payload // .payload' \
+  | while read -r p; do echo "$p" | openssl base64 -d -A; echo; done \
+  | jq -r 'select(.predicateType | test("spdx"; "i")) | .predicate.packages[] | "\(.name) \(.versionInfo)"'
 
 # Ver a provenance
 gh attestation verify oci://ghcr.io/slackerwx/<img>@sha256:<digest> --owner slackerwx \

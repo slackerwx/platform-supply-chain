@@ -72,6 +72,16 @@ Passo a passo que qualquer pessoa de fora executa (ver `docs/slsa.md` para o det
 
 Em nenhum momento ela precisa acreditar em nós. Esse é o produto inteiro.
 
+## 6. SBOM não é verdade revelada
+
+Rode `./scripts/verify-image.sh` na imagem de exemplo e olhe a lista: entre os ~97 pacotes aparecem **seis entradas
+idênticas de "Simple Launcher 1.1.0.14"**, que não existem em lugar nenhum da imagem. É o cataloger de binários do
+Syft lendo metadado de versão embutido em executáveis e inventando um pacote.
+
+Isso não é bug do pipeline, é a natureza da ferramenta — e é por isso que SBOM serve para **inventário e
+rastreabilidade**, não como prova de ausência. Quando alguém disser "temos SBOM de tudo, estamos cobertos", essa é a
+pergunta a fazer: cobertos contra o quê, com qual taxa de falso positivo e falso negativo?
+
 ---
 
 # Exercícios: quebrar e consertar
