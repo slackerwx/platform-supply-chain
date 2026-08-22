@@ -107,9 +107,19 @@ nos consumidores, não aqui (este repo é público e tem code scanning de graça
 ### `Failed to persist attestation: Feature not available for user-owned private repositories`
 
 O `actions/attest-build-provenance` não funciona em repo privado de conta pessoal — só em repo público ou em plano
-Team/Enterprise. Foi por isso que este repositório é público. Um consumidor privado que chame o reusable workflow
-vai bater nisso: as saídas são tornar aquele repo público, migrar para uma org com plano Team, ou aceitar assinatura
-+ SBOM sem provenance.
+Team/Enterprise. Foi por isso que **este** repositório é público.
+
+Um consumidor privado passa **`attest_provenance: false`**:
+
+```yaml
+    with:
+      image_name: platform-sre-agent
+      push: ${{ github.event_name != 'pull_request' }}
+      attest_provenance: false      # repo privado de conta pessoal
+```
+
+Ele continua assinado e com SBOM assinado; perde só a provenance, e o job avisa no summary. As alternativas para
+recuperar a terceira alegação são tornar o repo público ou movê-lo para uma org com plano Team.
 
 ### O job `verify` falha mas o `build` passou
 

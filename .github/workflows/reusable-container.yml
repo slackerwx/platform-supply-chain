@@ -35,6 +35,14 @@ on:
         required: false
         type: string
         default: "critical"
+      attest_provenance:
+        description: >-
+          Attach SLSA build provenance. GitHub refuses to issue build attestations to user-owned private
+          repositories, so a private caller on a personal account must pass false — it keeps the signature and
+          the SBOM and loses only the provenance. Public repos and Team/Enterprise plans should leave this true.
+        required: false
+        type: boolean
+        default: true
       only_fixed:
         description: >-
           Gate only on vulnerabilities that have a fix available. Un-fixable CVEs still appear in the full
@@ -237,12 +245,28 @@ jobs:
         run: cosign attest --type spdxjson --predicate sbom.spdx.json "${{ steps.ref.outputs.image }}"
 
       - name: SLSA build provenance (GitHub artifact attestation, pushed to the registry)
-        if: ${{ inputs.push }}
+        if: ${{ inputs.push && inputs.attest_provenance }}
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
         with:
           subject-name: ${{ env.IMAGE }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
+
+      # Opting out of provenance is a real reduction in what this image can prove. Say so where people look,
+      # rather than letting a missing attestation pass for a complete chain.
+      - name: Record that this image ships without provenance
+        if: ${{ inputs.push && !inputs.attest_provenance }}
+        run: |
+          {
+            echo "### ⚠️ No SLSA provenance for \`${IMAGE}\`"
+            echo ""
+            echo "\`attest_provenance: false\` — this image is **signed** and carries a **signed SBOM**, but"
+            echo "nothing attests which workflow and commit produced it. GitHub issues build attestations only to"
+            echo "public repositories and to Team/Enterprise plans; a user-owned private repository cannot have one."
+            echo ""
+            echo "To restore it: make the repository public, or move it to an organisation on a Team plan."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::warning::Image published without SLSA provenance (attest_provenance=false)."
 
   verify:
     name: verify signature · sbom · provenance
@@ -278,6 +302,7 @@ jobs:
             --certificate-identity-regexp '^https://github\.com/${{ github.repository_owner }}/' \
             "${{ needs.build.outputs.image }}" | jq -r '.payloadType' | head -1
       - name: gh attestation verify (SLSA provenance)
+        if: ${{ inputs.attest_provenance }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: gh attestation verify "oci://${{ needs.build.outputs.image }}" --owner "${{ github.repository_owner }}"

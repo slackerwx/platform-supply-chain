@@ -55,6 +55,11 @@ jobs:
 That is the whole adoption cost. Pull requests still build and scan — they just do not publish or sign, because a
 signature must only ever be produced from `main`; that is precisely what the Kyverno subject regex trusts.
 
+**If the calling repository is private and owned by a personal account**, add `attest_provenance: false`. GitHub
+issues build attestations only to public repositories and to Team/Enterprise plans; without the flag the build fails
+on `Failed to persist attestation`. You keep the signature and the SBOM and lose the provenance — the workflow says
+so loudly in the job summary rather than letting a two-of-three chain pass for a complete one.
+
 ### `reusable-container.yml`
 
 | Input | Type | Default | Meaning |
@@ -66,6 +71,7 @@ signature must only ever be produced from `main`; that is precisely what the Kyv
 | `push` | boolean | `true` | publish + sign + attest |
 | `fail_on_severity` | string | `critical` | Grype gate: `negligible`\|`low`\|`medium`\|`high`\|`critical` |
 | `only_fixed` | boolean | `true` | gate only on vulnerabilities that have a fix available |
+| `attest_provenance` | boolean | `true` | attach SLSA provenance; **private repos on personal accounts must pass `false`** |
 
 Outputs: `image` (`ghcr.io/owner/name@sha256:…`), `digest`, `tags`.
 Required caller permissions: `contents: read`, `packages: write`, `id-token: write`, `attestations: write`,

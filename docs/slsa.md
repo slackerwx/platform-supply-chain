@@ -102,5 +102,11 @@ At no point does the auditor have to take our word for anything. That is the ent
   no patched release to move to. Blocking on an unfixable finding stops every build without removing the
   vulnerability. The full, unfiltered report is published to the job summary and uploaded as an artifact on every
   run, and the attested SBOM lets anyone re-scan under a stricter policy later. `docs/runbook.md` covers triage.
+- **Provenance is unavailable to private repositories on personal accounts.** GitHub issues build attestations
+  only to public repositories and to Team/Enterprise plans, so those callers pass `attest_provenance: false` and
+  drop from three claims to two: still signed, still inventoried, no longer able to prove *which commit and
+  workflow* built the image. The workflow warns in the job summary and the `verify` job skips the corresponding
+  check — it does not pretend the claim is there. Restoring it means publishing the repository or moving it to an
+  organisation on a Team plan.
 - **A signature is not a safety certificate.** It says who built the artifact, not that the artifact is good. Signed
   malware is still malware — the value is that it is *attributable* malware.

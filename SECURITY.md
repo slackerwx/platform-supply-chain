@@ -33,6 +33,10 @@ Every image published from `main` through `reusable-container.yml` carries:
 - a **signed SPDX SBOM**, attached as an in-toto attestation (`--type spdxjson`);
 - **SLSA build provenance** (`actions/attest-build-provenance`, pushed to the registry).
 
+Callers that are private repositories on a personal account pass `attest_provenance: false` and get the first two
+only — GitHub will not issue them a build attestation. That is a documented reduction, announced in the job summary
+of every such build, not a silent one.
+
 A signature attests **who built the artifact and from what**, not that the artifact is free of vulnerabilities. The
 Grype gate is a separate, deliberately configurable control — see `docs/slsa.md` § Known limits.
 
