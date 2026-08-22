@@ -179,18 +179,25 @@ Steps that need the owner (or the cluster) rather than CI:
 | Example app + Dockerfile, dogfooded by this repo's `ci.yml` | ✅ implemented |
 | `scripts/verify-image.sh` | ✅ implemented |
 | Documentation (`docs/slsa.md`, `docs/LEARNING.md`, `docs/runbook.md`, `SECURITY.md`) | ✅ implemented |
-| `v1` tag | ⬜ cut after the first green run — see Owner checklist |
+| `v1` tag | ✅ cut at the first green run; consumers pin `@v1` |
 | Kyverno rule in Enforce | ⬜ blocked on steps 3–5 above |
 
 ### Proof
 
-Recorded after the first signed build on `main`:
+Recorded from the first fully green run on `main` (2026-08-22), and verified by hand from a laptop with
+`scripts/verify-image.sh` — signature, SBOM attestation and SLSA provenance all `OK`, 97 packages inventoried:
 
 | Field | Value |
 |---|---|
-| Image | `ghcr.io/slackerwx/platform-supply-chain-hello` |
-| Digest | *(filled in after the first green run)* |
+| Image | `ghcr.io/slackerwx/platform-supply-chain-hello:ae6a935` |
+| Digest | `sha256:1a83fafb6c9c6020fca72fe6bfdac03532903552f873b064eeba46215418f418` |
 | Signed by | `https://github.com/slackerwx/platform-supply-chain/.github/workflows/reusable-container.yml@refs/heads/main` |
+| Issuer | `https://token.actions.githubusercontent.com` |
+
+```bash
+GHCR_TOKEN=<PAT read:packages> ./scripts/verify-image.sh \
+  ghcr.io/slackerwx/platform-supply-chain-hello@sha256:1a83fafb6c9c6020fca72fe6bfdac03532903552f873b064eeba46215418f418
+```
 
 ## Docs
 

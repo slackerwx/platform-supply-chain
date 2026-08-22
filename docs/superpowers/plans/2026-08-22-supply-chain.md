@@ -1,7 +1,7 @@
 # platform-supply-chain — Implementation plan
 
 **Date**: 2026-08-22 · **Source**: `docs/superpowers/specs/2026-08-17-supply-chain-design.md` §9/§10 ·
-**Status**: tasks 1–7 done; publishing
+**Status**: done — CI green on `main`, `v1` tagged
 
 The three reusable workflows, `ci.yml`, `scorecard.yml`, `dependabot.yml` and `CODEOWNERS` were committed on
 2026-08-17 (`cfcb3d0`). This plan builds everything the spec left as `⬜`: the example application that exercises the
@@ -58,7 +58,7 @@ pipeline, the human verification script, the documentation, and the `v1` tag con
 - [x] 5. Docs — `README.md`, `docs/slsa.md`, `SECURITY.md`, `LICENSE`, `catalog-info.yaml`
 - [x] 6. Docs pt-BR — `docs/LEARNING.md` (≥5 break/fix exercises), `docs/runbook.md`
 - [x] 7. Offline validation — `actionlint`, `shellcheck scripts/*.sh`, YAML parse of every workflow
-- [ ] 8. Commit (Conventional Commits + `Claude-Session:` trailer) and
+- [x] 8. Commit (Conventional Commits + `Claude-Session:` trailer) and
       `gh repo create slackerwx/platform-supply-chain --private --source . --remote origin --push`
-- [ ] 9. CI green — `gh run watch <id> --exit-status`
-- [ ] 10. Tag `v1` and record the first signed digest in the README "proof" section
+- [x] 9. CI green — `gh run watch <id> --exit-status`
+- [x] 10. Tag `v1` and record the first signed digest in the README "proof" section
