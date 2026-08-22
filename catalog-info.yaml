@@ -1,0 +1,18 @@
+apiVersion: backstage.io/v1alpha1
+kind: Component
+metadata:
+  name: platform-supply-chain
+  description: Secure software supply chain for the homelab — reusable GitHub Actions workflows that build, describe (SPDX SBOM), scan, sign (cosign keyless) and attest (SLSA provenance) every image, plus an independent verify job
+  annotations:
+    github.com/project-slug: slackerwx/platform-supply-chain
+    backstage.io/techdocs-ref: dir:.
+  tags: [supply-chain, sigstore, sbom, slsa, github-actions]
+  links:
+    - url: https://github.com/slackerwx/platform-supply-chain/blob/main/docs/slsa.md
+      title: SLSA evidence map
+spec:
+  # Nothing runs in the cluster: this component is consumed by other repositories' CI, not deployed.
+  type: library
+  lifecycle: experimental
+  owner: user:slackerwx
+  system: homelab
