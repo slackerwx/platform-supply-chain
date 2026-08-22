@@ -8,7 +8,11 @@
 # Private GHCR packages need a token with `read:packages`:
 #   GHCR_TOKEN=ghp_… ./scripts/verify-image.sh <image>
 #
-# Overridable: OWNER, ISSUER, IDENTITY_REGEXP, GHCR_USER.
+# An image built by a private repo on a personal account has no SLSA provenance — GitHub will not
+# issue one. Say so, and the provenance check is reported as expected-absent instead of failed:
+#   EXPECT_PROVENANCE=false ./scripts/verify-image.sh <image>
+#
+# Overridable: OWNER, ISSUER, IDENTITY_REGEXP, GHCR_USER, EXPECT_PROVENANCE.
 set -euo pipefail
 
 OWNER="${OWNER:-slackerwx}"
@@ -98,8 +102,13 @@ check "SBOM attestation (spdx)" \
     --certificate-identity-regexp "$IDENTITY_REGEXP" \
     "$IMAGE"
 
-check "SLSA build provenance" \
-  gh attestation verify "oci://${IMAGE}" --owner "$OWNER"
+if [ "${EXPECT_PROVENANCE:-true}" = "false" ]; then
+  printf '  %-34s%sSKIP%s %s(attest_provenance=false: signed and inventoried, but cannot prove which commit built it)%s\n' \
+    "SLSA build provenance" "$DIM" "$RESET" "$DIM" "$RESET"
+else
+  check "SLSA build provenance" \
+    gh attestation verify "oci://${IMAGE}" --owner "$OWNER"
+fi
 
 echo
 echo "${BOLD}SBOM${RESET}"
@@ -109,7 +118,11 @@ fi
 
 echo
 if [ "$failures" -eq 0 ]; then
-  echo "${GREEN}${BOLD}PASS${RESET} — signature, SBOM and provenance all verify for $IMAGE"
+  if [ "${EXPECT_PROVENANCE:-true}" = "false" ]; then
+    echo "${GREEN}${BOLD}PASS${RESET} — signature and SBOM verify for $IMAGE ${DIM}(no provenance by design)${RESET}"
+  else
+    echo "${GREEN}${BOLD}PASS${RESET} — signature, SBOM and provenance all verify for $IMAGE"
+  fi
   exit 0
 fi
 echo "${RED}${BOLD}FAIL${RESET} — $failures check(s) failed for $IMAGE"

@@ -121,6 +121,14 @@ Um consumidor privado passa **`attest_provenance: false`**:
 Ele continua assinado e com SBOM assinado; perde só a provenance, e o job avisa no summary. As alternativas para
 recuperar a terceira alegação são tornar o repo público ou movê-lo para uma org com plano Team.
 
+Para verificar uma imagem dessas à mão sem o script reclamar de uma ausência que é esperada:
+
+```bash
+EXPECT_PROVENANCE=false GHCR_TOKEN=<PAT> ./scripts/verify-image.sh ghcr.io/slackerwx/<img>@sha256:<digest>
+```
+
+O resumo final diz `(no provenance by design)` — ele não finge que a cadeia está completa.
+
 ### O job `verify` falha mas o `build` passou
 
 Exatamente o caso que o job existe para pegar. Ordem de investigação:
