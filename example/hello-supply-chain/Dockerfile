@@ -3,7 +3,7 @@
 # `restrict-image-registries` (platform-policies) reject anything looser.
 FROM ghcr.io/astral-sh/uv:0.12.5 AS uv
 
-FROM docker.io/library/python:3.12.14-slim AS builder
+FROM docker.io/library/python:3.14.8-slim AS builder
 COPY --from=uv /uv /usr/local/bin/uv
 WORKDIR /app
 # Dependency layer first so source edits do not invalidate it (there are no runtime deps today, but the
@@ -15,7 +15,7 @@ COPY src ./src
 # that does not exist there and `python -m hello.app` would fail at runtime.
 RUN uv sync --frozen --no-dev --no-editable
 
-FROM docker.io/library/python:3.12.14-slim
+FROM docker.io/library/python:3.14.8-slim
 RUN useradd --uid 10001 --create-home hello
 WORKDIR /app
 COPY --from=builder /app/.venv /app/.venv
