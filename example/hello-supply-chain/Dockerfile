@@ -1,7 +1,7 @@
 # Multi-stage on purpose: the builder carries uv and the build backend, the final image carries neither.
 # Base image is fully qualified and pinned to a patch version — `disallow-latest-tag` and
 # `restrict-image-registries` (platform-policies) reject anything looser.
-FROM ghcr.io/astral-sh/uv:0.12.5 AS uv
+FROM ghcr.io/astral-sh/uv:0.13.5 AS uv
 
 FROM docker.io/library/python:3.12.14-slim AS builder
 COPY --from=uv /uv /usr/local/bin/uv
